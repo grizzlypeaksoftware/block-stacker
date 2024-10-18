@@ -126,22 +126,22 @@ function draw() {
     
     ctx.restore();
     
-    // Draw score
+    // Draw score (reduced font size)
     ctx.fillStyle = '#FFF';
-    ctx.font = '12px Arial';
+    ctx.font = '14px Arial';
     ctx.textAlign = 'left';
-    ctx.fillText('Score: ' + score, 10, 15);
+    ctx.fillText('Score: ' + score, 10, 20);
 
-    // Draw help icon
+    // Draw help icon (slightly smaller)
     ctx.fillStyle = '#4ECDC4';
     ctx.beginPath();
-    ctx.arc(canvas.width - 25, 25, 15, 0, Math.PI * 2);
+    ctx.arc(canvas.width - 20, 20, 15, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#2C3E50';
-    ctx.font = 'bold 16px Arial';
+    ctx.font = 'bold 18px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('?', canvas.width - 25, 25);
+    ctx.fillText('?', canvas.width - 20, 20);
 
     // Draw instructions if showInstructions is true
     if (showInstructions) {
@@ -161,7 +161,7 @@ function drawInstructions() {
     ctx.fillStyle = '#FFF';
     ctx.font = '16px "Press Start 2P"';
     ctx.textAlign = 'center';
-    ctx.fillText('INSTRUCTIONS', canvas.width / 2, 25);
+    ctx.fillText('INSTRUCTIONS', canvas.width / 2, 40);
     
     ctx.font = '12px Arial';
     const instructions = [
@@ -179,11 +179,11 @@ function drawInstructions() {
     ];
     
     instructions.forEach((line, index) => {
-        ctx.fillText(line, canvas.width / 2, 50 + index * 30);
+        ctx.fillText(line, canvas.width / 2, 80 + index * 25);
     });
     
     ctx.font = '12px Arial';
-    ctx.fillText('Tap anywhere to close', canvas.width / 2, canvas.height - 30);
+    ctx.fillText('Tap anywhere to close', canvas.width / 2, canvas.height - 20);
 }
 
 function drawGameOver() {
@@ -191,15 +191,15 @@ function drawGameOver() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     ctx.fillStyle = '#FFF';
-    ctx.font = '16px "Press Start 2P"';
+    ctx.font = '18px "Press Start 2P"';
     ctx.textAlign = 'center';
     ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 30);
     
-    ctx.font = '12px "Press Start 2P"';
+    ctx.font = '14px "Press Start 2P"';
     ctx.fillText('Score: ' + score, canvas.width / 2, canvas.height / 2 + 10);
     
-    ctx.font = '12px "Press Start 2P"';
-    ctx.fillText('Press SPACE to restart', canvas.width / 2, canvas.height / 2 + 50);
+    ctx.font = '10px "Press Start 2P"';
+    ctx.fillText('Press SPACE to restart', canvas.width / 2, canvas.height / 2 + 40);
 }
 
 // Get a random piece
@@ -345,7 +345,7 @@ function handleCanvasInteraction(event) {
     y *= canvasScale.y;
 
     // Check if help icon was tapped/clicked (increased detection area)
-    if (Math.sqrt(Math.pow(x - (canvas.width - 25), 2) + Math.pow(y - 25, 2)) <= 20) {
+    if (Math.sqrt(Math.pow(x - (canvas.width - 20), 2) + Math.pow(y - 20, 2)) <= 15) {
         showInstructions = !showInstructions;
         console.log('Help icon interacted, showInstructions:', showInstructions); // Debug log
     } else if (showInstructions) {
@@ -365,14 +365,42 @@ function preventDefault(e) {
 canvas.addEventListener('touchmove', preventDefault, { passive: false });
 canvas.addEventListener('touchend', preventDefault, { passive: false });
 
+// Function to handle mobile control button clicks
+function handleMobileControl(action) {
+    if (gameOver || showInstructions) return;
+    
+    switch(action) {
+        case 'left':
+            moveLeft();
+            break;
+        case 'right':
+            moveRight();
+            break;
+        case 'down':
+            moveDown();
+            break;
+        case 'rotate':
+            rotatePiece();
+            break;
+    }
+}
+
 // Update mobile controls
-const controlButtons = ['leftBtn', 'rightBtn', 'downBtn', 'rotateBtn'];
-controlButtons.forEach(btnId => {
-    const btn = document.getElementById(btnId);
-    btn.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        btn.click();
-    }, { passive: false });
+const controlButtons = [
+    { id: 'leftBtn', action: 'left' },
+    { id: 'rightBtn', action: 'right' },
+    { id: 'downBtn', action: 'down' },
+    { id: 'rotateBtn', action: 'rotate' }
+];
+
+controlButtons.forEach(({ id, action }) => {
+    const btn = document.getElementById(id);
+    ['touchstart', 'mousedown'].forEach(eventType => {
+        btn.addEventListener(eventType, (e) => {
+            e.preventDefault();
+            handleMobileControl(action);
+        }, { passive: false });
+    });
 });
 
 // Start the game
