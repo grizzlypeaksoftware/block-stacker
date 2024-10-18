@@ -1,0 +1,81 @@
+body {
+    background-color: #222;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    margin: 0;
+    padding: 10px;
+    box-sizing: border-box;
+    overflow-y: hidden; /* Prevent vertical scrolling */
+}
+
+h1 {
+    font-family: 'Press Start 2P', cursive;
+    font-size: 1.2em; /* Slightly reduced font size */
+    margin: 5px 0; /* Reduced margin */
+    text-align: center;
+    color: #ff6b6b;
+    text-shadow: 2px 2px #4ecdc4;
+}
+
+#gameContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 400px;
+}
+
+canvas {
+    border: 1px solid #4ecdc4;
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+#controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 5px; /* Reduced margin */
+    width: 100%;
+}
+
+#controls button {
+    font-size: 16px; /* Slightly reduced font size */
+    margin: 2px; /* Reduced margin */
+    padding: 8px; /* Reduced padding */
+    background-color: #4ecdc4;
+    border: none;
+    color: #222;
+    cursor: pointer;
+    width: calc(25% - 4px); /* Adjusted for new margin */
+    max-width: 80px;
+}
+
+#instructions {
+    display: none; /* Hide instructions by default */
+    margin-top: 5px;
+    text-align: center;
+    font-size: 0.7em;
+    max-width: 400px;
+}
+
+@media (min-height: 700px) {
+    body {
+        justify-content: center;
+        overflow-y: auto; /* Allow scrolling on taller screens */
+    }
+    
+    #gameContainer {
+        margin-bottom: 10px;
+    }
+    
+    #instructions {
+        display: block; /* Show instructions on taller screens */
+    }
+}
