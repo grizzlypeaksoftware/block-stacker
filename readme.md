@@ -16,7 +16,7 @@ Block Stacker is a modern, web-based take on the classic falling block puzzle ga
 
 ### Prerequisites
 
-![You can play the game here](https://grizzlypeaksoftware.github.io/block-stacker)
+[You can play the game here](https://grizzlypeaksoftware.github.io/block-stacker/)
 
 To run Block Stacker, you need:
 
