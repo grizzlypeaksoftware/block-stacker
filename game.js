@@ -12,6 +12,8 @@ let dropCounter = 0;
 let lastTime = 0;
 let gameOver = false;
 let showInstructions = false;
+let canvasRect;
+let canvasScale;
 
 // Piece shapes (slightly different from traditional Tetris)
 const PIECES = [
@@ -39,7 +41,7 @@ canvas.height = ROWS * BLOCK_SIZE;
 function resizeCanvas() {
     const gameContainer = document.getElementById('gameContainer');
     const maxWidth = Math.min(gameContainer.clientWidth, 400);
-    const maxHeight = window.innerHeight - 120; // Account for controls and prevent scrolling
+    const maxHeight = window.innerHeight - 120;
     const aspectRatio = COLS / ROWS;
 
     let newWidth = maxWidth;
@@ -52,6 +54,13 @@ function resizeCanvas() {
 
     canvas.style.width = `${newWidth}px`;
     canvas.style.height = `${newHeight}px`;
+
+    // Update canvasRect and canvasScale
+    canvasRect = canvas.getBoundingClientRect();
+    canvasScale = {
+        x: canvas.width / canvasRect.width,
+        y: canvas.height / canvasRect.height
+    };
 }
 
 // Call resizeCanvas on window resize and initial load
@@ -121,17 +130,18 @@ function draw() {
     ctx.fillStyle = '#FFF';
     ctx.font = '12px Arial';
     ctx.textAlign = 'left';
-    ctx.fillText('Score: ' + score, 10, 25);
+    ctx.fillText('Score: ' + score, 10, 15);
 
     // Draw help icon
     ctx.fillStyle = '#4ECDC4';
     ctx.beginPath();
-    ctx.arc(canvas.width - 25, 27, 15, 0, Math.PI * 2);
+    ctx.arc(canvas.width - 25, 25, 15, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#2C3E50';
     ctx.font = 'bold 16px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('?', canvas.width - 25, 33);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('?', canvas.width - 25, 25);
 
     // Draw instructions if showInstructions is true
     if (showInstructions) {
@@ -149,7 +159,7 @@ function drawInstructions() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     ctx.fillStyle = '#FFF';
-    ctx.font = '14px "Press Start 2P"';
+    ctx.font = '16px "Press Start 2P"';
     ctx.textAlign = 'center';
     ctx.fillText('INSTRUCTIONS', canvas.width / 2, 25);
     
@@ -173,7 +183,7 @@ function drawInstructions() {
     });
     
     ctx.font = '12px Arial';
-    ctx.fillText('Tap anywhere to close', canvas.width / 2, canvas.height - 20);
+    ctx.fillText('Tap anywhere to close', canvas.width / 2, canvas.height - 30);
 }
 
 function drawGameOver() {
@@ -181,11 +191,11 @@ function drawGameOver() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     ctx.fillStyle = '#FFF';
-    ctx.font = '20px "Press Start 2P"';
+    ctx.font = '16px "Press Start 2P"';
     ctx.textAlign = 'center';
     ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 30);
     
-    ctx.font = '16px "Press Start 2P"';
+    ctx.font = '12px "Press Start 2P"';
     ctx.fillText('Score: ' + score, canvas.width / 2, canvas.height / 2 + 10);
     
     ctx.font = '12px "Press Start 2P"';
@@ -317,28 +327,53 @@ function rotatePiece() {
     }
 }
 
-// Add click event listener for help icon and instructions
-canvas.addEventListener('click', (event) => {
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    
-    const x = (event.clientX - rect.left) * scaleX;
-    const y = (event.clientY - rect.top) * scaleY;
-    
-    // Check if help icon was clicked (increased detection area)
+// Function to handle both click and touch events
+function handleCanvasInteraction(event) {
+    event.preventDefault(); // Prevent default touch behavior
+
+    let x, y;
+    if (event.type === 'touchstart') {
+        const touch = event.touches[0];
+        x = touch.clientX - canvasRect.left;
+        y = touch.clientY - canvasRect.top;
+    } else { // click event
+        x = event.clientX - canvasRect.left;
+        y = event.clientY - canvasRect.top;
+    }
+
+    x *= canvasScale.x;
+    y *= canvasScale.y;
+
+    // Check if help icon was tapped/clicked (increased detection area)
     if (Math.sqrt(Math.pow(x - (canvas.width - 25), 2) + Math.pow(y - 25, 2)) <= 20) {
-        showInstructions = true;
+        showInstructions = !showInstructions;
+        console.log('Help icon interacted, showInstructions:', showInstructions); // Debug log
     } else if (showInstructions) {
         showInstructions = false;
     }
-});
+}
 
-// Mobile controls
-document.getElementById('leftBtn').addEventListener('click', moveLeft);
-document.getElementById('rightBtn').addEventListener('click', moveRight);
-document.getElementById('downBtn').addEventListener('click', moveDown);
-document.getElementById('rotateBtn').addEventListener('click', rotatePiece);
+// Add both click and touch event listeners
+canvas.addEventListener('click', handleCanvasInteraction);
+canvas.addEventListener('touchstart', handleCanvasInteraction);
+
+// Prevent default touch behavior
+function preventDefault(e) {
+    e.preventDefault();
+}
+
+canvas.addEventListener('touchmove', preventDefault, { passive: false });
+canvas.addEventListener('touchend', preventDefault, { passive: false });
+
+// Update mobile controls
+const controlButtons = ['leftBtn', 'rightBtn', 'downBtn', 'rotateBtn'];
+controlButtons.forEach(btnId => {
+    const btn = document.getElementById(btnId);
+    btn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        btn.click();
+    }, { passive: false });
+});
 
 // Start the game
 initBoard();
