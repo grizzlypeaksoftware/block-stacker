@@ -57,14 +57,6 @@ canvas {
     max-width: 80px;
 }
 
-#instructions {
-    display: none; /* Hide instructions by default */
-    margin-top: 5px;
-    text-align: center;
-    font-size: 0.7em;
-    max-width: 400px;
-}
-
 @media (min-height: 700px) {
     body {
         justify-content: center;

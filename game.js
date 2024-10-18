@@ -11,6 +11,7 @@ let score = 0;
 let dropCounter = 0;
 let lastTime = 0;
 let gameOver = false;
+let showInstructions = false;
 
 // Piece shapes (slightly different from traditional Tetris)
 const PIECES = [
@@ -38,7 +39,7 @@ canvas.height = ROWS * BLOCK_SIZE;
 function resizeCanvas() {
     const gameContainer = document.getElementById('gameContainer');
     const maxWidth = Math.min(gameContainer.clientWidth, 400);
-    const maxHeight = window.innerHeight - 120; // Increased to account for controls and prevent scrolling
+    const maxHeight = window.innerHeight - 120; // Account for controls and prevent scrolling
     const aspectRatio = COLS / ROWS;
 
     let newWidth = maxWidth;
@@ -70,7 +71,7 @@ function gameLoop(time = 0) {
     const deltaTime = time - lastTime;
     lastTime = time;
     
-    if (!gameOver) {
+    if (!gameOver && !showInstructions) {
         dropCounter += deltaTime;
         if (dropCounter > GAME_SPEED) {
             moveDown();
@@ -118,26 +119,77 @@ function draw() {
     
     // Draw score
     ctx.fillStyle = '#FFF';
-    ctx.font = '16px Arial';
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'left';
     ctx.fillText('Score: ' + score, 10, 25);
+
+    // Draw help icon
+    ctx.fillStyle = '#4ECDC4';
+    ctx.beginPath();
+    ctx.arc(canvas.width - 25, 27, 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#2C3E50';
+    ctx.font = 'bold 16px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('?', canvas.width - 25, 33);
+
+    // Draw instructions if showInstructions is true
+    if (showInstructions) {
+        drawInstructions();
+    }
 
     // Draw game over screen
     if (gameOver) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        ctx.fillStyle = '#FFF';
-        ctx.font = '20px "Press Start 2P"';
-        ctx.textAlign = 'center';
-        ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 30);
-        
-        ctx.font = '16px "Press Start 2P"';
-        ctx.fillText('Score: ' + score, canvas.width / 2, canvas.height / 2 + 10);
-        
-        ctx.font = '12px "Press Start 2P"';
-        ctx.fillText('Press SPACE', canvas.width / 2, canvas.height / 2 + 40);
-        ctx.fillText('to restart', canvas.width / 2, canvas.height / 2 + 60);
+        drawGameOver();
     }
+}
+
+function drawInstructions() {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.fillStyle = '#FFF';
+    ctx.font = '14px "Press Start 2P"';
+    ctx.textAlign = 'center';
+    ctx.fillText('INSTRUCTIONS', canvas.width / 2, 25);
+    
+    ctx.font = '12px Arial';
+    const instructions = [
+        'Desktop:',
+        '← → : Move left/right',
+        '↑ : Rotate',
+        '↓ : Move down',
+        '',
+        'Mobile:',
+        'Use on-screen buttons',
+        '',
+        'Clear lines to score!',
+        'Game over when blocks',
+        'reach the top!'
+    ];
+    
+    instructions.forEach((line, index) => {
+        ctx.fillText(line, canvas.width / 2, 50 + index * 30);
+    });
+    
+    ctx.font = '12px Arial';
+    ctx.fillText('Tap anywhere to close', canvas.width / 2, canvas.height - 20);
+}
+
+function drawGameOver() {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.fillStyle = '#FFF';
+    ctx.font = '20px "Press Start 2P"';
+    ctx.textAlign = 'center';
+    ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 30);
+    
+    ctx.font = '16px "Press Start 2P"';
+    ctx.fillText('Score: ' + score, canvas.width / 2, canvas.height / 2 + 10);
+    
+    ctx.font = '12px "Press Start 2P"';
+    ctx.fillText('Press SPACE to restart', canvas.width / 2, canvas.height / 2 + 50);
 }
 
 // Get a random piece
@@ -204,6 +256,11 @@ function resetGame() {
 document.addEventListener('keydown', handleInput);
 
 function handleInput(e) {
+    if (showInstructions) {
+        showInstructions = false;
+        return;
+    }
+
     if (gameOver) {
         if (e.code === 'Space') {
             resetGame();
@@ -259,6 +316,23 @@ function rotatePiece() {
         currentPiece.shape = prevShape;
     }
 }
+
+// Add click event listener for help icon and instructions
+canvas.addEventListener('click', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    const x = (event.clientX - rect.left) * scaleX;
+    const y = (event.clientY - rect.top) * scaleY;
+    
+    // Check if help icon was clicked (increased detection area)
+    if (Math.sqrt(Math.pow(x - (canvas.width - 25), 2) + Math.pow(y - 25, 2)) <= 20) {
+        showInstructions = true;
+    } else if (showInstructions) {
+        showInstructions = false;
+    }
+});
 
 // Mobile controls
 document.getElementById('leftBtn').addEventListener('click', moveLeft);
