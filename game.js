@@ -1,409 +1,171 @@
-// Game constants
-const COLS = 10;
-const ROWS = 20;
-const BLOCK_SIZE = 20;
-const GAME_SPEED = 400; // Slightly faster speed (milliseconds per drop)
+// game.js
+import { COLS, ROWS, GAME_SPEED, calculateBlockSize } from './config.js';
+import { createBoard, clearLines, collision, mergePiece } from './board.js';
+import { getRandomPiece, rotatePiece, movePiece } from './pieces.js';
+import { initCanvas, draw } from './renderer.js';
+import { setupKeyboardControls, setupTouchControls, setupMobileControls } from './input.js';
 
-// Game variables
-let board = [];
-let currentPiece;
-let score = 0;
-let dropCounter = 0;
-let lastTime = 0;
-let gameOver = false;
-let showInstructions = false;
-let canvasRect;
-let canvasScale;
+const gameState = {
+    board: null,
+    currentPiece: null,
+    score: 0,
+    dropCounter: 0,
+    lastTime: 0,
+    gameOver: false,
+    showInstructions: false,
+    BLOCK_SIZE: 0,
+    lastToggleTime: 0
+};
 
-// Piece shapes (slightly different from traditional Tetris)
-const PIECES = [
-    [[1, 1, 1], [0, 1, 0]],
-    [[1, 1], [1, 1]],
-    [[1, 1, 0], [0, 1, 1]],
-    [[0, 1, 1], [1, 1, 0]],
-    [[1, 1, 1, 1]],
-    [[1, 1, 1], [1, 0, 0]],
-    [[1, 1, 1], [0, 0, 1]]
-];
-
-// Colors for pieces
-const COLORS = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FDCB6E", "#6C5CE7", "#FFA07A", "#55E6C1"];
-
-// Get the canvas and context
 const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+let ctx;
 
-// Set initial canvas size
-canvas.width = COLS * BLOCK_SIZE;
-canvas.height = ROWS * BLOCK_SIZE;
-
-// Function to handle canvas resizing
-function resizeCanvas() {
-    const gameContainer = document.getElementById('gameContainer');
-    const maxWidth = Math.min(gameContainer.clientWidth, 400);
-    const maxHeight = window.innerHeight - 120;
-    const aspectRatio = COLS / ROWS;
-
-    let newWidth = maxWidth;
-    let newHeight = newWidth / aspectRatio;
-
-    if (newHeight > maxHeight) {
-        newHeight = maxHeight;
-        newWidth = newHeight * aspectRatio;
-    }
-
-    canvas.style.width = `${newWidth}px`;
-    canvas.style.height = `${newHeight}px`;
-
-    // Update canvasRect and canvasScale
-    canvasRect = canvas.getBoundingClientRect();
-    canvasScale = {
-        x: canvas.width / canvasRect.width,
-        y: canvas.height / canvasRect.height
-    };
-}
-
-// Call resizeCanvas on window resize and initial load
-window.addEventListener('resize', resizeCanvas);
-window.addEventListener('load', resizeCanvas);
-
-// Initialize the game board
-function initBoard() {
-    board = [];
-    for (let r = 0; r < ROWS; r++) {
-        board[r] = new Array(COLS).fill(0);
-    }
-}
-
-// Game loop
-function gameLoop(time = 0) {
-    const deltaTime = time - lastTime;
-    lastTime = time;
+function init() {
+    gameState.board = createBoard();
+    gameState.score = 0;
+    gameState.dropCounter = 0;
+    gameState.lastTime = 0;
+    gameState.gameOver = false;
+    gameState.showInstructions = false;
+    gameState.currentPiece = getRandomPiece();
     
-    if (!gameOver && !showInstructions) {
-        dropCounter += deltaTime;
-        if (dropCounter > GAME_SPEED) {
+    gameState.BLOCK_SIZE = calculateBlockSize();
+    ctx = initCanvas(canvas, COLS, ROWS, gameState.BLOCK_SIZE);
+}
+
+function gameLoop(time = 0) {
+    const deltaTime = time - gameState.lastTime;
+    gameState.lastTime = time;
+    
+    if (!gameState.gameOver && !gameState.showInstructions) {
+        gameState.dropCounter += deltaTime;
+        if (gameState.dropCounter > GAME_SPEED) {
             moveDown();
-            dropCounter = 0;
+            gameState.dropCounter = 0;
         }
     }
     
-    draw();
+    draw(ctx, gameState.board, gameState.currentPiece, gameState.score, gameState.gameOver, gameState.showInstructions, gameState.BLOCK_SIZE);
     requestAnimationFrame(gameLoop);
 }
 
-// Draw the game
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#2C3E50';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    const scale = canvas.width / (COLS * BLOCK_SIZE);
-    ctx.save();
-    ctx.scale(scale, scale);
-    
-    // Draw the board
-    for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-            if (board[r][c]) {
-                ctx.fillStyle = COLORS[board[r][c] - 1];
-                ctx.fillRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
-            }
+function moveDown() {
+    const newPiece = movePiece(gameState.currentPiece, 0, 1);
+    if (!collision(newPiece, gameState.board)) {
+        gameState.currentPiece = newPiece;
+    } else {
+        mergePiece(gameState.currentPiece, gameState.board);
+        gameState.score = clearLines(gameState.board, gameState.score);
+        gameState.currentPiece = getRandomPiece();
+        
+        if (collision(gameState.currentPiece, gameState.board)) {
+            gameState.gameOver = true;
         }
-    }
-    
-    // Draw the current piece
-    if (currentPiece) {
-        ctx.fillStyle = COLORS[currentPiece.colorIndex];
-        for (let r = 0; r < currentPiece.shape.length; r++) {
-            for (let c = 0; c < currentPiece.shape[r].length; c++) {
-                if (currentPiece.shape[r][c]) {
-                    ctx.fillRect((currentPiece.x + c) * BLOCK_SIZE, (currentPiece.y + r) * BLOCK_SIZE, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
-                }
-            }
-        }
-    }
-    
-    ctx.restore();
-    
-    // Draw score (reduced font size)
-    ctx.fillStyle = '#FFF';
-    ctx.font = '14px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText('Score: ' + score, 10, 20);
-
-    // Draw help icon (slightly smaller)
-    ctx.fillStyle = '#4ECDC4';
-    ctx.beginPath();
-    ctx.arc(canvas.width - 20, 20, 15, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#2C3E50';
-    ctx.font = 'bold 18px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('?', canvas.width - 20, 20);
-
-    // Draw instructions if showInstructions is true
-    if (showInstructions) {
-        drawInstructions();
-    }
-
-    // Draw game over screen
-    if (gameOver) {
-        drawGameOver();
-    }
-}
-
-function drawInstructions() {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    ctx.fillStyle = '#FFF';
-    ctx.font = '16px "Press Start 2P"';
-    ctx.textAlign = 'center';
-    ctx.fillText('INSTRUCTIONS', canvas.width / 2, 40);
-    
-    ctx.font = '12px Arial';
-    const instructions = [
-        'Desktop:',
-        '← → : Move left/right',
-        '↑ : Rotate',
-        '↓ : Move down',
-        '',
-        'Mobile:',
-        'Use on-screen buttons',
-        '',
-        'Clear lines to score!',
-        'Game over when blocks',
-        'reach the top!'
-    ];
-    
-    instructions.forEach((line, index) => {
-        ctx.fillText(line, canvas.width / 2, 80 + index * 25);
-    });
-    
-    ctx.font = '12px Arial';
-    ctx.fillText('Tap anywhere to close', canvas.width / 2, canvas.height - 20);
-}
-
-function drawGameOver() {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    ctx.fillStyle = '#FFF';
-    ctx.font = '18px "Press Start 2P"';
-    ctx.textAlign = 'center';
-    ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 30);
-    
-    ctx.font = '14px "Press Start 2P"';
-    ctx.fillText('Score: ' + score, canvas.width / 2, canvas.height / 2 + 10);
-    
-    ctx.font = '10px "Press Start 2P"';
-    ctx.fillText('Press SPACE to restart', canvas.width / 2, canvas.height / 2 + 40);
-}
-
-// Get a random piece
-function getRandomPiece() {
-    const shapeIndex = Math.floor(Math.random() * PIECES.length);
-    return {
-        shape: PIECES[shapeIndex],
-        x: Math.floor(COLS / 2) - 1,
-        y: 0,
-        colorIndex: shapeIndex
-    };
-}
-
-// Check for collision
-function collision() {
-    for (let r = 0; r < currentPiece.shape.length; r++) {
-        for (let c = 0; c < currentPiece.shape[r].length; c++) {
-            if (currentPiece.shape[r][c]) {
-                const newX = currentPiece.x + c;
-                const newY = currentPiece.y + r;
-                if (newX < 0 || newX >= COLS || newY >= ROWS || (newY >= 0 && board[newY][newX])) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-}
-
-// Merge the piece with the board
-function mergePiece() {
-    for (let r = 0; r < currentPiece.shape.length; r++) {
-        for (let c = 0; c < currentPiece.shape[r].length; c++) {
-            if (currentPiece.shape[r][c]) {
-                board[currentPiece.y + r][currentPiece.x + c] = currentPiece.colorIndex + 1;
-            }
-        }
-    }
-}
-
-// Clear completed lines
-function clearLines() {
-    let linesCleared = 0;
-    for (let r = ROWS - 1; r >= 0; r--) {
-        if (board[r].every(cell => cell !== 0)) {
-            board.splice(r, 1);
-            board.unshift(new Array(COLS).fill(0));
-            linesCleared++;
-            r++; // Check the same row again
-        }
-    }
-    score += linesCleared * 100;
-}
-
-// Reset the game
-function resetGame() {
-    initBoard();
-    score = 0;
-    currentPiece = getRandomPiece();
-    gameOver = false;
-}
-
-// Handle key presses
-document.addEventListener('keydown', handleInput);
-
-function handleInput(e) {
-    if (showInstructions) {
-        showInstructions = false;
-        return;
-    }
-
-    if (gameOver) {
-        if (e.code === 'Space') {
-            resetGame();
-        }
-        return;
-    }
-
-    if (!currentPiece) return;
-    
-    if (e.key === 'ArrowLeft') {
-        moveLeft();
-    } else if (e.key === 'ArrowRight') {
-        moveRight();
-    } else if (e.key === 'ArrowDown') {
-        moveDown();
-    } else if (e.key === 'ArrowUp' || e.code === 'Space') {
-        rotatePiece();
     }
 }
 
 function moveLeft() {
-    currentPiece.x--;
-    if (collision()) currentPiece.x++;
+    const newPiece = movePiece(gameState.currentPiece, -1, 0);
+    if (!collision(newPiece, gameState.board)) gameState.currentPiece = newPiece;
 }
 
 function moveRight() {
-    currentPiece.x++;
-    if (collision()) currentPiece.x--;
+    const newPiece = movePiece(gameState.currentPiece, 1, 0);
+    if (!collision(newPiece, gameState.board)) gameState.currentPiece = newPiece;
 }
 
-function moveDown() {
-    currentPiece.y++;
-    if (collision()) {
-        currentPiece.y--;
-        mergePiece();
-        clearLines();
-        currentPiece = getRandomPiece();
-        
-        if (collision()) {
-            gameOver = true;
-        }
+function rotate() {
+    const newPiece = rotatePiece(gameState.currentPiece);
+    if (!collision(newPiece, gameState.board)) gameState.currentPiece = newPiece;
+}
+
+function restartGame() {
+    if (gameState.gameOver) {
+        init();
+        gameLoop();
     }
 }
 
-// Rotate the current piece
-function rotatePiece() {
-    const rotated = currentPiece.shape[0].map((_, i) => 
-        currentPiece.shape.map(row => row[i]).reverse()
-    );
-    const prevShape = currentPiece.shape;
-    currentPiece.shape = rotated;
-    if (collision()) {
-        currentPiece.shape = prevShape;
+function toggleInstructions() {
+    const now = Date.now();
+    if (now - gameState.lastToggleTime < 300) {
+        console.log('Debounced toggle');
+        return;
+    }
+    gameState.lastToggleTime = now;
+    console.log('toggleInstructions called. Before:', gameState.showInstructions);
+    gameState.showInstructions = !gameState.showInstructions;
+    console.log('After:', gameState.showInstructions);
+}
+
+function hideInstructions() {
+    if (gameState.showInstructions) {
+        console.log('Hiding instructions');
+        gameState.showInstructions = false;
     }
 }
 
-// Function to handle both click and touch events
-function handleCanvasInteraction(event) {
-    event.preventDefault(); // Prevent default touch behavior
-
-    let x, y;
-    if (event.type === 'touchstart') {
-        const touch = event.touches[0];
-        x = touch.clientX - canvasRect.left;
-        y = touch.clientY - canvasRect.top;
-    } else { // click event
-        x = event.clientX - canvasRect.left;
-        y = event.clientY - canvasRect.top;
-    }
-
-    x *= canvasScale.x;
-    y *= canvasScale.y;
-
-    // Check if help icon was tapped/clicked (increased detection area)
-    if (Math.sqrt(Math.pow(x - (canvas.width - 20), 2) + Math.pow(y - 20, 2)) <= 15) {
-        showInstructions = !showInstructions;
-        console.log('Help icon interacted, showInstructions:', showInstructions); // Debug log
-    } else if (showInstructions) {
-        showInstructions = false;
-    }
-}
-
-// Add both click and touch event listeners
-canvas.addEventListener('click', handleCanvasInteraction);
-canvas.addEventListener('touchstart', handleCanvasInteraction);
-
-// Prevent default touch behavior
-function preventDefault(e) {
-    e.preventDefault();
-}
-
-canvas.addEventListener('touchmove', preventDefault, { passive: false });
-canvas.addEventListener('touchend', preventDefault, { passive: false });
-
-// Function to handle mobile control button clicks
-function handleMobileControl(action) {
-    if (gameOver || showInstructions) return;
+function handleInteraction(event) {
+    event.preventDefault();
     
-    switch(action) {
-        case 'left':
-            moveLeft();
-            break;
-        case 'right':
-            moveRight();
-            break;
-        case 'down':
-            moveDown();
-            break;
-        case 'rotate':
-            rotatePiece();
-            break;
+    const touch = event.type.startsWith('touch') ? event.touches[0] : event;
+    
+    const rect = canvas.getBoundingClientRect();
+    const x = (touch.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (touch.clientY - rect.top) * (canvas.height / rect.height);
+    
+    console.log('Interaction at:', x, y);
+    
+    // Check if click/tap is on the ? icon
+    if (x >= canvas.width - 35 && x <= canvas.width - 5 && y >= 5 && y <= 35) {
+        console.log('? icon clicked');
+        toggleInstructions();
+        event.stopPropagation();
+        return;
     }
+    
+    // If instructions are shown, hide them on any click/tap outside the ? icon
+    if (gameState.showInstructions) {
+        hideInstructions();
+        return;
+    }
+    
+    // Handle other game interactions
+    if (gameState.gameOver) {
+        console.log('Restarting game');
+        restartGame();
+    }
+    
+    draw(ctx, gameState.board, gameState.currentPiece, gameState.score, gameState.gameOver, gameState.showInstructions, gameState.BLOCK_SIZE);
 }
 
-// Update mobile controls
-const controlButtons = [
-    { id: 'leftBtn', action: 'left' },
-    { id: 'rightBtn', action: 'right' },
-    { id: 'downBtn', action: 'down' },
-    { id: 'rotateBtn', action: 'rotate' }
-];
+const handlers = {
+    moveLeft,
+    moveRight,
+    moveDown,
+    rotate,
+    toggleInstructions,
+    hideInstructions,
+    restartGame
+};
 
-controlButtons.forEach(({ id, action }) => {
-    const btn = document.getElementById(id);
-    ['touchstart', 'mousedown'].forEach(eventType => {
-        btn.addEventListener(eventType, (e) => {
-            e.preventDefault();
-            handleMobileControl(action);
-        }, { passive: false });
-    });
+setupKeyboardControls(handlers);
+setupTouchControls(canvas, handlers);
+setupMobileControls(handlers);
+
+window.addEventListener('resize', () => {
+    gameState.BLOCK_SIZE = calculateBlockSize();
+    ctx = initCanvas(canvas, COLS, ROWS, gameState.BLOCK_SIZE);
+    draw(ctx, gameState.board, gameState.currentPiece, gameState.score, gameState.gameOver, gameState.showInstructions, gameState.BLOCK_SIZE);
 });
 
-// Start the game
-initBoard();
-resetGame();
+// Remove existing event listeners
+canvas.removeEventListener('click', handleInteraction);
+canvas.removeEventListener('touchstart', handleInteraction);
+
+// Add new event listeners
+canvas.addEventListener('click', handleInteraction, { capture: true });
+canvas.addEventListener('touchstart', handleInteraction, { passive: false, capture: true });
+
+init();
 gameLoop();

@@ -52,10 +52,10 @@ h1 {
 canvas {
     border: 1px solid #4ecdc4;
     display: block;
-    max-width: 100%;
+    width: 100%;
     height: auto;
     touch-action: none;
-    max-height: calc(100vh - 150px);
+    max-height: calc(100vh - 200px);
 }
 
 #controls {
@@ -115,7 +115,7 @@ canvas {
     }
 
     canvas {
-        max-height: calc(100vh - 200px);
+        max-height: calc(100vh - 250px);
     }
 
     #controls {
